@@ -10,8 +10,8 @@ function showSection(id, btn) {
 /* ---------- 4BBB ---------- */
 function calculate4BBB() {
   const slope = parseFloat(document.getElementById("slope").value);
-  const rating = 66.5;
-  const par = 69;
+  const rating = parseFloat(document.getElementById("rating").value);
+  const par = parseFloat(document.getElementById("par").value);
 
   const rows = document.querySelectorAll("#players tbody tr");
   let playing = [];
