@@ -2,20 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <title>Golf Web App</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <title>Golf Scorecard App</title>
-
-  <!-- PWA -->
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#2e7d32">
 
   <style>
     body {
-      font-family: Arial, sans-serif;
       margin: 0;
       padding: 16px;
-      min-height: 100vh;
+      font-family: Arial, sans-serif;
       background:
         linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)),
         url("fairway.JPG") center / cover no-repeat fixed;
@@ -23,20 +17,14 @@
 
     .app {
       max-width: 900px;
-      margin: 0 auto;
-      background: rgba(255,255,255,0.82);
+      margin: auto;
+      background: rgba(255,255,255,0.85);
       border-radius: 12px;
       padding: 20px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
     }
 
-    h1 {
+    h1, h2 {
       text-align: center;
-      font-family: Georgia, serif;
-      font-size: 1.6rem;
-      margin-bottom: 12px;
     }
 
     .nav {
@@ -50,8 +38,7 @@
       padding: 10px;
       border: none;
       border-radius: 8px;
-      background: #eee;
-      font-weight: 600;
+      font-weight: bold;
       cursor: pointer;
     }
 
@@ -60,53 +47,52 @@
       color: white;
     }
 
+    .section {
+      display: none;
+    }
+
     .controls {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
       margin-bottom: 12px;
-      align-items: flex-end;
     }
 
     label {
-      font-size: 0.85rem;
       flex: 1;
+      font-size: 0.85rem;
     }
 
     select, input {
       width: 100%;
       padding: 6px;
-      font-size: 0.9rem;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 12px;
+      margin-top: 12px;
     }
 
     th, td {
       border: 1px solid #ccc;
       padding: 6px;
       text-align: center;
-      font-size: 0.85rem;
     }
 
     th {
-      background: #f1f8f4;
-    }
-
-    tbody tr:nth-child(even) {
-      background: rgba(0,0,0,0.03);
+      background: #e8f5e9;
     }
 
     button.action {
+      margin-top: 10px;
+      width: 100%;
       padding: 10px;
       background: #2e7d32;
       color: white;
       border: none;
       border-radius: 8px;
-      font-weight: 600;
+      font-weight: bold;
       cursor: pointer;
     }
 
@@ -115,28 +101,16 @@
       padding: 0;
       max-height: 200px;
       overflow-y: auto;
-      margin: 8px 0;
     }
 
-    ul li {
+    li {
       padding: 6px;
-      border-bottom: 1px solid #ddd;
+      border-bottom: 1px solid #ccc;
       cursor: pointer;
     }
 
-    ul li:hover {
+    li:hover {
       background: #e8f5e9;
-    }
-
-    .section {
-      display: none;
-    }
-
-    footer {
-      text-align: center;
-      font-size: 0.75rem;
-      color: #444;
-      margin-top: 12px;
     }
   </style>
 </head>
@@ -144,7 +118,7 @@
 <body>
 
 <div class="app">
-  <h1>Golf Scorecard App</h1>
+  <h1>Golf Web App</h1>
 
   <div class="nav">
     <button class="active" onclick="showSection('fourbbb', this)">4BBB</button>
@@ -156,7 +130,6 @@
   <div id="fourbbb" class="section" style="display:block;">
     <h2>4BBB Handicap Calculator</h2>
 
-    <!-- Course selector -->
     <div class="controls">
       <label>Country
         <select id="country">
@@ -177,12 +150,7 @@
     </div>
 
     <div id="courseResults" style="display:none;">
-      <input
-        type="text"
-        id="courseSearch"
-        placeholder="Search courses A–Z"
-        oninput="filterCourses()"
-      >
+      <input id="courseSearch" placeholder="Search courses..." oninput="filterCourses()">
       <ul id="courseList"></ul>
     </div>
 
@@ -192,7 +160,6 @@
       </label>
     </div>
 
-    <!-- 4BBB table -->
     <table id="players">
       <thead>
         <tr>
@@ -219,15 +186,9 @@
     <h2>Stableford</h2>
     <table id="stableTable">
       <thead>
-        <tr><th>Hole</th><th>Par</th><th>Gross</th><th>Pts</th></tr>
+        <tr><th>Hole</th><th>Par</th><th>Gross</th><th>Points</th></tr>
       </thead>
-      <tbody>
-        <script>
-          for (let i = 1; i <= 18; i++) {
-            document.write(`<tr><td>${i}</td><td><input></td><td><input></td><td></td></tr>`);
-          }
-        </script>
-      </tbody>
+      <tbody></tbody>
     </table>
     <button class="action" onclick="calculateStableford()">Calculate Stableford</button>
   </div>
@@ -239,28 +200,13 @@
       <thead>
         <tr><th>Hole</th><th>Par</th><th>Gross</th></tr>
       </thead>
-      <tbody>
-        <script>
-          for (let i = 1; i <= 18; i++) {
-            document.write(`<tr><td>${i}</td><td><input></td><td><input></td></tr>`);
-          }
-        </script>
-      </tbody>
+      <tbody></tbody>
     </table>
     <button class="action" onclick="calculateStrokePlay()">Total Score</button>
     <p id="strokeTotal"></p>
   </div>
-
-  <footer>Offline • Installable • Expandable</footer>
 </div>
 
-<script src="script.js"></script>
-
-<script>
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("service-worker.js");
-  }
-</script>
-
+<script src="./script.js"></script>
 </body>
 </html>
