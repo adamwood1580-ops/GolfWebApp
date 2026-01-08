@@ -10,7 +10,7 @@ async function loadCourses() {
     const res = await fetch("./courses/courses-gb.json");
     coursesDB = await res.json();
     console.log("Courses loaded:", coursesDB);
-    enableCourseSelectors();
+    enableCourseSelectors(); // FIX 3: only enable after load
   } catch (err) {
     console.error("Failed to load course database", err);
   }
@@ -18,61 +18,81 @@ async function loadCourses() {
 
 loadCourses();
 
-/* ================= NAV ================= */
+/* ================= NAVIGATION ================= */
 function showSection(id, btn) {
-  document.querySelectorAll(".section").forEach(s => s.style.display = "none");
+  document.querySelectorAll(".section").forEach(s => {
+    s.style.display = "none";
+  });
   document.getElementById(id).style.display = "block";
-  document.querySelectorAll(".nav button").forEach(b => b.classList.remove("active"));
+
+  document.querySelectorAll(".nav button").forEach(b => {
+    b.classList.remove("active");
+  });
   btn.classList.add("active");
 }
 
-/* ================= COUNTRY → COUNTY ================= */
-document.getElementById("country").addEventListener("change", e => {
-  const county = document.getElementById("county");
-  county.innerHTML = `<option value="">Select</option>`;
-  if (!coursesDB[e.target.value]) return;
+/* ================= ENABLE COURSE SELECTORS (FIX 3) ================= */
+function enableCourseSelectors() {
+  const countrySelect = document.getElementById("country");
+  const countySelect = document.getElementById("county");
 
-  Object.keys(coursesDB[e.target.value]).forEach(c => {
-    county.innerHTML += `<option value="${c}">${c}</option>`;
+  countrySelect.addEventListener("change", () => {
+    countySelect.innerHTML = `<option value="">Select</option>`;
+    const country = countrySelect.value;
+
+    if (!coursesDB[country]) return;
+
+    Object.keys(coursesDB[country]).forEach(county => {
+      const opt = document.createElement("option");
+      opt.value = county;
+      opt.textContent = county;
+      countySelect.appendChild(opt);
+    });
   });
-});
+}
 
 /* ================= COURSE SEARCH ================= */
 function searchCourses() {
-  const country = country.value;
-  const countyVal = county.value;
-  if (!coursesDB[country]?.[countyVal]) return;
+  const country = document.getElementById("country").value;
+  const county = document.getElementById("county").value;
 
-  currentCourses = coursesDB[country][countyVal];
+  if (!coursesDB[country] || !coursesDB[country][county]) return;
+
+  currentCourses = coursesDB[country][county];
   const list = document.getElementById("courseList");
   list.innerHTML = "";
 
-  Object.keys(currentCourses).sort().forEach(c => {
+  Object.keys(currentCourses).sort().forEach(course => {
     const li = document.createElement("li");
-    li.textContent = c;
-    li.onclick = () => selectCourse(c);
+    li.textContent = course;
+    li.onclick = () => selectCourse(course);
     list.appendChild(li);
   });
 
   document.getElementById("courseResults").style.display = "block";
 }
 
-/* ================= FILTER ================= */
+/* ================= FILTER COURSES ================= */
 function filterCourses() {
-  const term = courseSearch.value.toLowerCase();
+  const term = document.getElementById("courseSearch").value.toLowerCase();
   document.querySelectorAll("#courseList li").forEach(li => {
-    li.style.display = li.textContent.toLowerCase().includes(term) ? "block" : "none";
+    li.style.display = li.textContent.toLowerCase().includes(term)
+      ? "block"
+      : "none";
   });
 }
 
-/* ================= COURSE SELECT ================= */
-function selectCourse(name) {
-  selectedCourse = currentCourses[name];
-  const tee = document.getElementById("tee");
-  tee.innerHTML = "";
+/* ================= COURSE & TEE SELECTION ================= */
+function selectCourse(courseName) {
+  selectedCourse = currentCourses[courseName];
+  const teeSelect = document.getElementById("tee");
+  teeSelect.innerHTML = "";
 
-  Object.keys(selectedCourse.tees).forEach(t => {
-    tee.innerHTML += `<option value="${t}">${t}</option>`;
+  Object.keys(selectedCourse.tees).forEach(tee => {
+    const opt = document.createElement("option");
+    opt.value = tee;
+    opt.textContent = tee;
+    teeSelect.appendChild(opt);
   });
 
   document.getElementById("teeSelector").style.display = "block";
@@ -80,41 +100,62 @@ function selectCourse(name) {
 }
 
 function applyCourseData() {
-  const data = selectedCourse.tees[tee.value];
+  if (!selectedCourse) return;
+
+  const tee = document.getElementById("tee").value;
+  const data = selectedCourse.tees[tee];
+
   courseSlope = data.slope;
   courseRating = data.rating;
   coursePar = data.par;
+
   calculate4BBB();
 }
 
-/* ================= 4BBB ================= */
+/* ================= 4BBB CALCULATION ================= */
 function calculate4BBB() {
-  if (!courseSlope) return;
-  const rows = document.querySelectorAll("#players tbody tr");
-  let plays = [];
+  if (!courseSlope || !courseRating || !coursePar) return;
 
-  rows.forEach(r => r.style.background = "");
+  const rows = document.querySelectorAll("#players tbody tr");
+  let playingHandicaps = [];
+
+  rows.forEach(row => row.style.background = "");
 
   rows.forEach(row => {
     const index = parseFloat(row.cells[1].querySelector("input").value);
-    if (isNaN(index)) return;
 
-    const course = (index * courseSlope / 113) + (courseRating - coursePar);
-    const playing = Math.round(course * 0.9);
+    if (isNaN(index)) {
+      row.cells[2].textContent = "";
+      row.cells[3].textContent = "";
+      row.cells[4].textContent = "";
+      return;
+    }
 
-    row.cells[2].textContent = Math.round(course);
-    row.cells[3].textContent = playing;
-    plays.push(playing);
+    const courseHandicap =
+      (index * courseSlope / 113) + (courseRating - coursePar);
+
+    const playingHandicap = courseHandicap * 0.9;
+
+    const roundedCourse = Math.round(courseHandicap);
+    const roundedPlaying = Math.round(playingHandicap);
+
+    row.cells[2].textContent = roundedCourse;
+    row.cells[3].textContent = roundedPlaying;
+
+    playingHandicaps.push(roundedPlaying);
   });
 
-  if (!plays.length) return;
-  const low = Math.min(...plays);
+  if (!playingHandicaps.length) return;
+
+  const lowest = Math.min(...playingHandicaps);
 
   rows.forEach(row => {
-    const p = parseInt(row.cells[3].textContent);
-    if (!isNaN(p)) {
-      row.cells[4].textContent = p - low;
-      if (p === low) row.style.background = "#e8f5e9";
+    const playing = parseInt(row.cells[3].textContent);
+    if (!isNaN(playing)) {
+      row.cells[4].textContent = playing - lowest;
+      if (playing === lowest) {
+        row.style.background = "#e8f5e9";
+      }
     }
   });
 }
@@ -122,38 +163,66 @@ function calculate4BBB() {
 /* ================= STABLEFORD ================= */
 (function buildStableford() {
   const tbody = document.querySelector("#stableTable tbody");
+  if (!tbody) return;
+
   for (let i = 1; i <= 18; i++) {
-    tbody.innerHTML += `<tr><td>${i}</td><td><input></td><td><input></td><td></td></tr>`;
+    tbody.innerHTML +=
+      `<tr>
+        <td>${i}</td>
+        <td><input></td>
+        <td><input></td>
+        <td></td>
+      </tr>`;
   }
 })();
 
 function calculateStableford() {
   let total = 0;
-  document.querySelectorAll("#stableTable tbody tr").forEach(r => {
-    const par = +r.cells[1].querySelector("input").value;
-    const gross = +r.cells[2].querySelector("input").value;
-    if (!par || !gross) return;
+
+  document.querySelectorAll("#stableTable tbody tr").forEach(row => {
+    const par = parseInt(row.cells[1].querySelector("input").value);
+    const gross = parseInt(row.cells[2].querySelector("input").value);
+
+    if (isNaN(par) || isNaN(gross)) return;
+
     const diff = gross - par;
-    const pts = diff <= -3 ? 5 : diff === -2 ? 4 : diff === -1 ? 3 : diff === 0 ? 2 : diff === 1 ? 1 : 0;
-    r.cells[3].textContent = pts;
-    total += pts;
+    const points =
+      diff <= -3 ? 5 :
+      diff === -2 ? 4 :
+      diff === -1 ? 3 :
+      diff === 0 ? 2 :
+      diff === 1 ? 1 : 0;
+
+    row.cells[3].textContent = points;
+    total += points;
   });
+
   alert("Total Stableford Points: " + total);
 }
 
 /* ================= STROKE PLAY ================= */
-(function buildStroke() {
+(function buildStrokePlay() {
   const tbody = document.querySelector("#strokeTable tbody");
+  if (!tbody) return;
+
   for (let i = 1; i <= 18; i++) {
-    tbody.innerHTML += `<tr><td>${i}</td><td><input></td><td><input></td></tr>`;
+    tbody.innerHTML +=
+      `<tr>
+        <td>${i}</td>
+        <td><input></td>
+        <td><input></td>
+      </tr>`;
   }
 })();
 
 function calculateStrokePlay() {
   let total = 0;
-  document.querySelectorAll("#strokeTable tbody tr").forEach(r => {
-    const g = +r.cells[2].querySelector("input").value;
-    if (g) total += g;
+
+  document.querySelectorAll("#strokeTable tbody tr").forEach(row => {
+    const gross = parseInt(row.cells[2].querySelector("input").value);
+    if (!isNaN(gross)) total += gross;
   });
-  strokeTotal.textContent = "Total Gross Score: " + total;
+
+  document.getElementById("strokeTotal").textContent =
+    "Total Gross Score: " + total;
 }
