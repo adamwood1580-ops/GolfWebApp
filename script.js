@@ -5,10 +5,18 @@ let selectedCourse = null;
 let courseSlope, courseRating, coursePar;
 
 /* ================= LOAD COURSE DATABASE ================= */
-fetch("./courses/courses-gb.json")
-  .then(res => res.json())
-  .then(data => coursesDB = data)
-  .catch(err => console.error("Course DB load failed", err));
+async function loadCourses() {
+  try {
+    const res = await fetch("./courses/courses-gb.json");
+    coursesDB = await res.json();
+    console.log("Courses loaded:", coursesDB);
+    enableCourseSelectors();
+  } catch (err) {
+    console.error("Failed to load course database", err);
+  }
+}
+
+loadCourses();
 
 /* ================= NAV ================= */
 function showSection(id, btn) {
