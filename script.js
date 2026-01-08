@@ -78,3 +78,8 @@ function calculateStrokePlay() {
   document.getElementById("strokeTotal").textContent =
     "Total Gross Score: " + total;
 }
+document.addEventListener("input", e => {
+  if (["rating", "par", "slope"].includes(e.target.id)) {
+    calculate4BBB();
+  }
+});
