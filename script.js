@@ -1,75 +1,113 @@
-/* ---------- Navigation ---------- */
+/* ================= NAVIGATION ================= */
 function showSection(id, btn) {
-  document.querySelectorAll(".section").forEach(s => s.style.display = "none");
+  document.querySelectorAll(".section").forEach(section => {
+    section.style.display = "none";
+  });
+
   document.getElementById(id).style.display = "block";
 
-  document.querySelectorAll(".nav button").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".nav button").forEach(button => {
+    button.classList.remove("active");
+  });
+
   btn.classList.add("active");
 }
 
-/* ---------- 4BBB ---------- */
+/* ================= 4BBB ================= */
 function calculate4BBB() {
   const slope = parseFloat(document.getElementById("slope").value);
   const rating = parseFloat(document.getElementById("rating").value);
   const par = parseFloat(document.getElementById("par").value);
 
-  const rows = document.querySelectorAll("#players tbody tr");
-  let playing = [];
+  if (isNaN(slope) || isNaN(rating) || isNaN(par)) return;
 
-  rows.forEach(r => r.style.background = "");
+  const rows = document.querySelectorAll("#players tbody tr");
+  let playingHandicaps = [];
+
+  // Clear highlights
+  rows.forEach(row => row.style.background = "");
 
   rows.forEach(row => {
-    const index = parseFloat(row.cells[1].querySelector("input").value);
-    if (isNaN(index)) return;
+    const indexInput = row.cells[1].querySelector("input");
+    const index = parseFloat(indexInput.value);
 
-    const course = (index * slope / 113) + (rating - par);
-    const play = course * 0.9;
+    if (isNaN(index)) {
+      row.cells[2].textContent = "";
+      row.cells[3].textContent = "";
+      row.cells[4].textContent = "";
+      return;
+    }
 
-    const c = Math.round(course);
-    const p = Math.round(play);
+    // WHS course handicap formula
+    const courseHandicap = (index * slope / 113) + (rating - par);
+    const playingHandicap = courseHandicap * 0.9;
 
-    row.cells[2].textContent = c;
-    row.cells[3].textContent = p;
+    const roundedCourse = Math.round(courseHandicap);
+    const roundedPlaying = Math.round(playingHandicap);
 
-    playing.push(p);
+    row.cells[2].textContent = roundedCourse;
+    row.cells[3].textContent = roundedPlaying;
+
+    playingHandicaps.push(roundedPlaying);
   });
 
-  const low = Math.min(...playing);
+  if (playingHandicaps.length === 0) return;
+
+  const lowest = Math.min(...playingHandicaps);
 
   rows.forEach(row => {
-    const p = parseInt(row.cells[3].textContent);
-    if (!isNaN(p)) {
-      row.cells[4].textContent = p - low;
-      if (p === low) row.style.background = "#e8f5e9";
+    const playing = parseInt(row.cells[3].textContent);
+    if (!isNaN(playing)) {
+      row.cells[4].textContent = playing - lowest;
+
+      // Highlight lowest handicap
+      if (playing === lowest) {
+        row.style.background = "#e8f5e9";
+      }
     }
   });
 }
 
-/* ---------- Stableford ---------- */
+/* Auto-recalculate 4BBB on input changes */
+document.addEventListener("input", event => {
+  if (event.target.closest("#fourbbb")) {
+    calculate4BBB();
+  }
+});
+
+/* ================= STABLEFORD ================= */
 function calculateStableford() {
   let total = 0;
+
   document.querySelectorAll("#stableTable tbody tr").forEach(row => {
     const par = parseInt(row.cells[1].querySelector("input").value);
     const gross = parseInt(row.cells[2].querySelector("input").value);
-    if (isNaN(par) || isNaN(gross)) return;
+
+    if (isNaN(par) || isNaN(gross)) {
+      row.cells[3].textContent = "";
+      return;
+    }
 
     const diff = gross - par;
-    let pts = diff <= -3 ? 5 :
-              diff === -2 ? 4 :
-              diff === -1 ? 3 :
-              diff === 0 ? 2 :
-              diff === 1 ? 1 : 0;
+    let points = 0;
 
-    row.cells[3].textContent = pts;
-    total += pts;
+    if (diff <= -3) points = 5;
+    else if (diff === -2) points = 4;
+    else if (diff === -1) points = 3;
+    else if (diff === 0) points = 2;
+    else if (diff === 1) points = 1;
+
+    row.cells[3].textContent = points;
+    total += points;
   });
 
   alert("Total Stableford Points: " + total);
 }
 
-/* ---------- Stroke Play ---------- */
+/* ================= STROKE PLAY ================= */
 function calculateStrokePlay() {
   let total = 0;
+
   document.querySelectorAll("#strokeTable tbody tr").forEach(row => {
     const gross = parseInt(row.cells[2].querySelector("input").value);
     if (!isNaN(gross)) total += gross;
@@ -78,8 +116,3 @@ function calculateStrokePlay() {
   document.getElementById("strokeTotal").textContent =
     "Total Gross Score: " + total;
 }
-document.addEventListener("input", e => {
-  if (["rating", "par", "slope"].includes(e.target.id)) {
-    calculate4BBB();
-  }
-});
