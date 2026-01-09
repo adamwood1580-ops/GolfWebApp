@@ -40,7 +40,7 @@ function enableCourseSelectors() {
   if (!countrySelect || !countySelect) return;
 
   countrySelect.onchange = function () {
-    const country = countrySelect.value;
+    const countryVal = countrySelect.value;
     countySelect.innerHTML = '<option value="">Select</option>';
 
     const resultsDiv = document.getElementById("courseResults");
@@ -48,9 +48,9 @@ function enableCourseSelectors() {
     if (resultsDiv) resultsDiv.style.display = "none";
     if (teeSelectorDiv) teeSelectorDiv.style.display = "none";
 
-    if (!coursesDB[country]) return;
+    if (!coursesDB[countryVal]) return;
 
-    Object.keys(coursesDB[country]).forEach(county => {
+    Object.keys(coursesDB[countryVal]).forEach(county => {
       const opt = document.createElement("option");
       opt.value = county;
       opt.textContent = county;
@@ -61,18 +61,18 @@ function enableCourseSelectors() {
 
 /* ================= 4BBB: COURSE SEARCH & FILTER ================= */
 function searchCourses() {
-  const country = document.getElementById("country").value;
-  const county = document.getElementById("county").value;
+  const countryVal = document.getElementById("country").value;
+  const countyVal = document.getElementById("county").value;
   const resultsDiv = document.getElementById("courseResults");
   const list = document.getElementById("courseList");
 
-  if (!coursesDB[country] || !coursesDB[country][county]) {
+  if (!coursesDB[countryVal] || !coursesDB[countryVal][countyVal]) {
     resultsDiv.style.display = "none";
     list.innerHTML = "";
     return;
   }
 
-  currentCourses = coursesDB[country][county];
+  currentCourses = coursesDB[countryVal][countyVal];
   list.innerHTML = "";
 
   Object.keys(currentCourses).sort().forEach(course => {
@@ -80,7 +80,6 @@ function searchCourses() {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.textContent = course;
-    btn.dataset.course = course;
     btn.onclick = () => selectCourse(course);
     li.appendChild(btn);
     list.appendChild(li);
@@ -130,21 +129,18 @@ function applyCourseData() {
   courseRating = data.rating;
   coursePar = data.par;
 
-  // NEW: auto-fill hole pars for Stableford & Stroke Play if available
+  // auto-fill hole pars for Stableford & Stroke if we have them
   if (Array.isArray(data.holes) && data.holes.length === 18) {
     const stableRows = document.querySelectorAll("#stableTable tbody tr");
     const strokeRows = document.querySelectorAll("#strokeTable tbody tr");
-
     data.holes.forEach((parVal, i) => {
-      // Stableford par (col 1)
       if (stableRows[i]) {
-        const parInput = stableRows[i].cells[1].querySelector("input");
-        if (parInput) parInput.value = parVal;
+        const inp = stableRows[i].cells[1].querySelector("input");
+        if (inp) inp.value = parVal;
       }
-      // Stroke Play par (col 1)
       if (strokeRows[i]) {
-        const parInput2 = strokeRows[i].cells[1].querySelector("input");
-        if (parInput2) parInput2.value = parVal;
+        const inp2 = strokeRows[i].cells[1].querySelector("input");
+        if (inp2) inp2.value = parVal;
       }
     });
   }
@@ -340,7 +336,6 @@ function adminCountyChanged() {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.textContent = name;
-    btn.dataset.course = name;
     btn.onclick = () => adminSelectCourse(name);
     li.appendChild(btn);
     ul.appendChild(li);
@@ -394,7 +389,7 @@ function renderTeeEditor() {
       </tr>`;
   });
 
-  // Extra row for a new tee
+  // row for a new tee
   html += `
       <tr>
         <td><input class="tee-name" type="text" placeholder="New tee name"></td>
@@ -441,7 +436,7 @@ function saveTeeChanges() {
   }
 
   coursesDB[country][county][course].tees = newTees;
-  alert("Tees saved in memory. Use 'Download JSON' in Admin to export.");
+  alert("Tees saved in memory. Use 'Download JSON' to export.");
 }
 
 /* ================= ADMIN: EXPORT / IMPORT JSON ================= */
