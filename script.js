@@ -4,13 +4,16 @@ let currentCourses = {};
 let selectedCourse = null;
 let courseSlope, courseRating, coursePar;
 
+let adminSelected = { country: null, county: null, course: null };
+
 /* ================= LOAD COURSE DATABASE ================= */
 async function loadCourses() {
   try {
     const res = await fetch("./courses/courses-gb.json");
     coursesDB = await res.json();
     console.log("Courses loaded:", coursesDB);
-    enableCourseSelectors(); // FIX 3: only enable after load
+    enableCourseSelectors();
+    initAdminSelectors();
   } catch (err) {
     console.error("Failed to load course database", err);
   }
@@ -20,25 +23,30 @@ loadCourses();
 
 /* ================= NAVIGATION ================= */
 function showSection(id, btn) {
-  document.querySelectorAll(".section").forEach(s => {
-    s.style.display = "none";
+  document.querySelectorAll(".section").forEach(section => {
+    section.style.display = "none";
   });
-  document.getElementById(id).style.display = "block";
+  const target = document.getElementById(id);
+  if (target) target.style.display = "block";
 
-  document.querySelectorAll(".nav button").forEach(b => {
-    b.classList.remove("active");
-  });
+  document.querySelectorAll(".nav button").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
 }
 
-/* ================= ENABLE COURSE SELECTORS (FIX 3) ================= */
+/* ================= 4BBB: COUNTRY & COUNTY SELECTORS ================= */
 function enableCourseSelectors() {
   const countrySelect = document.getElementById("country");
   const countySelect = document.getElementById("county");
+  if (!countrySelect || !countySelect) return;
 
-  countrySelect.addEventListener("change", () => {
-    countySelect.innerHTML = `<option value="">Select</option>`;
+  countrySelect.onchange = function () {
     const country = countrySelect.value;
+    countySelect.innerHTML = '<option value="">Select</option>';
+
+    const resultsDiv = document.getElementById("courseResults");
+    const teeSelectorDiv = document.getElementById("teeSelector");
+    if (resultsDiv) resultsDiv.style.display = "none";
+    if (teeSelectorDiv) teeSelectorDiv.style.display = "none";
 
     if (!coursesDB[country]) return;
 
@@ -48,71 +56,103 @@ function enableCourseSelectors() {
       opt.textContent = county;
       countySelect.appendChild(opt);
     });
-  });
+  };
 }
 
-/* ================= COURSE SEARCH ================= */
+/* ================= 4BBB: COURSE SEARCH & FILTER ================= */
 function searchCourses() {
   const country = document.getElementById("country").value;
   const county = document.getElementById("county").value;
+  const resultsDiv = document.getElementById("courseResults");
+  const list = document.getElementById("courseList");
 
-  if (!coursesDB[country] || !coursesDB[country][county]) return;
+  if (!coursesDB[country] || !coursesDB[country][county]) {
+    resultsDiv.style.display = "none";
+    list.innerHTML = "";
+    return;
+  }
 
   currentCourses = coursesDB[country][county];
-  const list = document.getElementById("courseList");
   list.innerHTML = "";
 
   Object.keys(currentCourses).sort().forEach(course => {
     const li = document.createElement("li");
-    li.textContent = course;
-    li.onclick = () => selectCourse(course);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = course;
+    btn.dataset.course = course;
+    btn.onclick = () => selectCourse(course);
+    li.appendChild(btn);
     list.appendChild(li);
   });
 
-  document.getElementById("courseResults").style.display = "block";
+  resultsDiv.style.display = "block";
 }
 
-/* ================= FILTER COURSES ================= */
 function filterCourses() {
   const term = document.getElementById("courseSearch").value.toLowerCase();
-  document.querySelectorAll("#courseList li").forEach(li => {
-    li.style.display = li.textContent.toLowerCase().includes(term)
-      ? "block"
-      : "none";
+  document.querySelectorAll("#courseList li button").forEach(btn => {
+    btn.parentElement.style.display =
+      btn.textContent.toLowerCase().includes(term) ? "block" : "none";
   });
 }
 
-/* ================= COURSE & TEE SELECTION ================= */
+/* ================= 4BBB: COURSE & TEE SELECTION ================= */
 function selectCourse(courseName) {
   selectedCourse = currentCourses[courseName];
   const teeSelect = document.getElementById("tee");
-  teeSelect.innerHTML = "";
+  const teeSelectorDiv = document.getElementById("teeSelector");
 
-  Object.keys(selectedCourse.tees).forEach(tee => {
+  teeSelect.innerHTML = "";
+  if (!selectedCourse || !selectedCourse.tees) {
+    teeSelectorDiv.style.display = "none";
+    return;
+  }
+
+  Object.keys(selectedCourse.tees).forEach(teeName => {
     const opt = document.createElement("option");
-    opt.value = tee;
-    opt.textContent = tee;
+    opt.value = teeName;
+    opt.textContent = teeName;
     teeSelect.appendChild(opt);
   });
 
-  document.getElementById("teeSelector").style.display = "block";
+  teeSelectorDiv.style.display = "block";
   applyCourseData();
 }
 
 function applyCourseData() {
   if (!selectedCourse) return;
-
-  const tee = document.getElementById("tee").value;
-  const data = selectedCourse.tees[tee];
+  const teeName = document.getElementById("tee").value;
+  const data = selectedCourse.tees[teeName];
+  if (!data) return;
 
   courseSlope = data.slope;
   courseRating = data.rating;
   coursePar = data.par;
 
+  // NEW: auto-fill hole pars for Stableford & Stroke Play if available
+  if (Array.isArray(data.holes) && data.holes.length === 18) {
+    const stableRows = document.querySelectorAll("#stableTable tbody tr");
+    const strokeRows = document.querySelectorAll("#strokeTable tbody tr");
+
+    data.holes.forEach((parVal, i) => {
+      // Stableford par (col 1)
+      if (stableRows[i]) {
+        const parInput = stableRows[i].cells[1].querySelector("input");
+        if (parInput) parInput.value = parVal;
+      }
+      // Stroke Play par (col 1)
+      if (strokeRows[i]) {
+        const parInput2 = strokeRows[i].cells[1].querySelector("input");
+        if (parInput2) parInput2.value = parVal;
+      }
+    });
+  }
+
   calculate4BBB();
 }
 
-/* ================= 4BBB CALCULATION ================= */
+/* ================= 4BBB: CALCULATION ================= */
 function calculate4BBB() {
   if (!courseSlope || !courseRating || !coursePar) return;
 
@@ -122,7 +162,8 @@ function calculate4BBB() {
   rows.forEach(row => row.style.background = "");
 
   rows.forEach(row => {
-    const index = parseFloat(row.cells[1].querySelector("input").value);
+    const indexInput = row.cells[1].querySelector("input");
+    const index = parseFloat(indexInput.value);
 
     if (isNaN(index)) {
       row.cells[2].textContent = "";
@@ -133,7 +174,6 @@ function calculate4BBB() {
 
     const courseHandicap =
       (index * courseSlope / 113) + (courseRating - coursePar);
-
     const playingHandicap = courseHandicap * 0.9;
 
     const roundedCourse = Math.round(courseHandicap);
@@ -166,13 +206,14 @@ function calculate4BBB() {
   if (!tbody) return;
 
   for (let i = 1; i <= 18; i++) {
-    tbody.innerHTML +=
-      `<tr>
-        <td>${i}</td>
-        <td><input></td>
-        <td><input></td>
-        <td></td>
-      </tr>`;
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${i}</td>
+      <td><input type="number"></td>
+      <td><input type="number"></td>
+      <td></td>
+    `;
+    tbody.appendChild(tr);
   }
 })();
 
@@ -183,7 +224,10 @@ function calculateStableford() {
     const par = parseInt(row.cells[1].querySelector("input").value);
     const gross = parseInt(row.cells[2].querySelector("input").value);
 
-    if (isNaN(par) || isNaN(gross)) return;
+    if (isNaN(par) || isNaN(gross)) {
+      row.cells[3].textContent = "";
+      return;
+    }
 
     const diff = gross - par;
     const points =
@@ -206,12 +250,13 @@ function calculateStableford() {
   if (!tbody) return;
 
   for (let i = 1; i <= 18; i++) {
-    tbody.innerHTML +=
-      `<tr>
-        <td>${i}</td>
-        <td><input></td>
-        <td><input></td>
-      </tr>`;
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${i}</td>
+      <td><input type="number"></td>
+      <td><input type="number"></td>
+    `;
+    tbody.appendChild(tr);
   }
 })();
 
@@ -225,4 +270,210 @@ function calculateStrokePlay() {
 
   document.getElementById("strokeTotal").textContent =
     "Total Gross Score: " + total;
+}
+
+/* ================= ADMIN: INITIALISE SELECTORS ================= */
+function initAdminSelectors() {
+  const adminCountry = document.getElementById("adminCountry");
+  const adminCounty = document.getElementById("adminCounty");
+  const courseList = document.getElementById("adminCourseList");
+  const teeEditor = document.getElementById("teeEditor");
+
+  if (!adminCountry || !adminCounty) return;
+
+  adminCountry.innerHTML = '<option value="">Select</option>';
+  Object.keys(coursesDB).forEach(country => {
+    const opt = document.createElement("option");
+    opt.value = country;
+    opt.textContent = country;
+    adminCountry.appendChild(opt);
+  });
+
+  adminCounty.innerHTML = '<option value="">Select</option>';
+  if (courseList) courseList.innerHTML = "";
+  if (teeEditor) teeEditor.innerHTML = "";
+
+  adminSelected = { country: null, county: null, course: null };
+}
+
+/* ================= ADMIN: COUNTRY & COUNTY CHANGE ================= */
+function adminCountryChanged() {
+  const adminCountry = document.getElementById("adminCountry");
+  const adminCounty = document.getElementById("adminCounty");
+  const courseList = document.getElementById("adminCourseList");
+  const teeEditor = document.getElementById("teeEditor");
+
+  const country = adminCountry.value;
+
+  adminCounty.innerHTML = '<option value="">Select</option>';
+  courseList.innerHTML = "";
+  teeEditor.innerHTML = "";
+  adminSelected = { country: country || null, county: null, course: null };
+
+  if (!country || !coursesDB[country]) return;
+
+  Object.keys(coursesDB[country]).forEach(county => {
+    const opt = document.createElement("option");
+    opt.value = county;
+    opt.textContent = county;
+    adminCounty.appendChild(opt);
+  });
+}
+
+function adminCountyChanged() {
+  const country = document.getElementById("adminCountry").value;
+  const county = document.getElementById("adminCounty").value;
+  const courseList = document.getElementById("adminCourseList");
+  const teeEditor = document.getElementById("teeEditor");
+
+  courseList.innerHTML = "";
+  teeEditor.innerHTML = "";
+  adminSelected = { country, county: county || null, course: null };
+
+  if (!country || !county || !coursesDB[country] || !coursesDB[country][county]) return;
+
+  const courses = coursesDB[country][county];
+  const ul = document.createElement("ul");
+
+  Object.keys(courses).sort().forEach(name => {
+    const li = document.createElement("li");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = name;
+    btn.dataset.course = name;
+    btn.onclick = () => adminSelectCourse(name);
+    li.appendChild(btn);
+    ul.appendChild(li);
+  });
+
+  courseList.appendChild(ul);
+}
+
+/* ================= ADMIN: SELECT COURSE & EDIT TEES ================= */
+function adminSelectCourse(courseName) {
+  const country = document.getElementById("adminCountry").value;
+  const county = document.getElementById("adminCounty").value;
+
+  if (!country || !county || !coursesDB[country] || !coursesDB[country][county]) return;
+  if (!coursesDB[country][county][courseName]) return;
+
+  adminSelected = { country, county, course: courseName };
+  renderTeeEditor();
+}
+
+function renderTeeEditor() {
+  const { country, county, course } = adminSelected;
+  const container = document.getElementById("teeEditor");
+  if (!container || !country || !county || !course) {
+    if (container) container.innerHTML = "";
+    return;
+  }
+
+  const courseObj = coursesDB[country][county][course];
+  const tees = courseObj.tees || {};
+
+  let html = `<h3>${course}</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Tee Name</th>
+          <th>Slope</th>
+          <th>Rating</th>
+          <th>Par</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+  Object.entries(tees).forEach(([name, data]) => {
+    html += `
+      <tr>
+        <td><input class="tee-name" type="text" value="${name}"></td>
+        <td><input class="tee-slope" type="number" step="1" value="${data.slope ?? ""}"></td>
+        <td><input class="tee-rating" type="number" step="0.1" value="${data.rating ?? ""}"></td>
+        <td><input class="tee-par" type="number" step="1" value="${data.par ?? ""}"></td>
+      </tr>`;
+  });
+
+  // Extra row for a new tee
+  html += `
+      <tr>
+        <td><input class="tee-name" type="text" placeholder="New tee name"></td>
+        <td><input class="tee-slope" type="number" step="1"></td>
+        <td><input class="tee-rating" type="number" step="0.1"></td>
+        <td><input class="tee-par" type="number" step="1"></td>
+      </tr>
+      </tbody>
+    </table>
+    <button type="button" class="action" onclick="saveTeeChanges()">Save Changes</button>
+  `;
+
+  container.innerHTML = html;
+}
+
+function saveTeeChanges() {
+  const { country, county, course } = adminSelected;
+  if (!country || !county || !course) return;
+
+  const container = document.getElementById("teeEditor");
+  const rows = container.querySelectorAll("tbody tr");
+  const newTees = {};
+
+  rows.forEach(row => {
+    const name = row.querySelector(".tee-name").value.trim();
+    const slopeVal = row.querySelector(".tee-slope").value;
+    const ratingVal = row.querySelector(".tee-rating").value;
+    const parVal = row.querySelector(".tee-par").value;
+
+    if (!name) return;
+
+    const slope = parseFloat(slopeVal);
+    const rating = parseFloat(ratingVal);
+    const par = parseInt(parVal);
+
+    if (isNaN(slope) || isNaN(rating) || isNaN(par)) return;
+
+    newTees[name] = { slope, rating, par };
+  });
+
+  if (!Object.keys(newTees).length) {
+    alert("No valid tees to save.");
+    return;
+  }
+
+  coursesDB[country][county][course].tees = newTees;
+  alert("Tees saved in memory. Use 'Download JSON' in Admin to export.");
+}
+
+/* ================= ADMIN: EXPORT / IMPORT JSON ================= */
+function exportCourses() {
+  const dataStr = JSON.stringify(coursesDB, null, 2);
+  const blob = new Blob([dataStr], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "courses-gb-updated.json";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importCourses(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      coursesDB = data;
+      alert("Course database imported into memory.");
+      enableCourseSelectors();
+      initAdminSelectors();
+    } catch (err) {
+      console.error("Import failed", err);
+      alert("Invalid JSON file.");
+    }
+  };
+  reader.readAsText(file);
 }
