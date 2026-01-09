@@ -212,6 +212,47 @@ function applyCourseData() {
   calculate4BBB();
 }
 
+/* ========== SHARED: COURSE HANDICAP FROM INDEX ========== */
+function computeCourseHandicapFromIndex(index) {
+  if (isNaN(index)) return null;
+  if (!courseSlope || !courseRating || !coursePar) {
+    alert("Please select a course and tee in the 4BBB tab first.");
+    return null;
+  }
+  const courseHandicap = (index * courseSlope / 113) + (courseRating - coursePar);
+  return Math.round(courseHandicap);
+}
+
+/* Used by Stableford handicap panel */
+function updateStableCourseHandicap() {
+  const idxInput = document.getElementById("stableIndex");
+  const out = document.getElementById("stableCourseHcp");
+  const idx = parseFloat(idxInput.value);
+
+  if (isNaN(idx)) {
+    out.value = "";
+    return;
+  }
+
+  const ch = computeCourseHandicapFromIndex(idx);
+  if (ch !== null) out.value = ch;
+}
+
+/* Used by Stroke Play handicap panel */
+function updateStrokeCourseHandicap() {
+  const idxInput = document.getElementById("strokeIndex");
+  const out = document.getElementById("strokeCourseHcp");
+  const idx = parseFloat(idxInput.value);
+
+  if (isNaN(idx)) {
+    out.value = "";
+    return;
+  }
+
+  const ch = computeCourseHandicapFromIndex(idx);
+  if (ch !== null) out.value = ch;
+}
+
 /* ================= 4BBB: CALCULATION ================= */
 function calculate4BBB() {
   if (!courseSlope || !courseRating || !coursePar) return;
@@ -281,8 +322,18 @@ function calculate4BBB() {
 function calculateStableford() {
   let total = 0;
 
-  document.querySelectorAll("#stableTable tbody tr").forEach(row => {
-    const si = parseInt(row.cells[1].querySelector("input").value);   // SI (not used yet)
+  // Get course handicap (can be 0 if not set)
+  const chVal = parseInt(document.getElementById("stableCourseHcp").value);
+  const courseHcp = isNaN(chVal) ? 0 : Math.max(chVal, 0); // ignore negative for now
+
+  const rows = document.querySelectorAll("#stableTable tbody tr");
+  const numHoles = rows.length || 18;
+
+  const baseStrokes = Math.floor(courseHcp / numHoles);
+  const extraStrokes = courseHcp % numHoles;
+
+  rows.forEach(row => {
+    const si = parseInt(row.cells[1].querySelector("input").value);
     const par = parseInt(row.cells[2].querySelector("input").value);
     const gross = parseInt(row.cells[3].querySelector("input").value);
 
@@ -291,8 +342,22 @@ function calculateStableford() {
       return;
     }
 
-    // Gross-only Stableford (net can be added later using SI + handicap)
-    const diff = gross - par;
+    // Strokes allocated on this hole
+    let strokes = baseStrokes;
+
+    // Extra stroke for the hardest `extraStrokes` holes (SI 1..extraStrokes)
+    if (
+      courseHcp > 0 &&
+      !isNaN(si) &&
+      si >= 1 &&
+      si <= numHoles &&
+      si <= extraStrokes
+    ) {
+      strokes += 1;
+    }
+
+    const net = gross - strokes;
+    const diff = net - par; // how many over/under par net
 
     const points =
       diff <= -3 ? 5 :
@@ -305,7 +370,7 @@ function calculateStableford() {
     total += points;
   });
 
-  alert("Total Stableford Points: " + total);
+  alert("Total Net Stableford Points: " + total);
 }
 
 /* ================= STROKE PLAY ================= */
