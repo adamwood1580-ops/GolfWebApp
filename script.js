@@ -11,7 +11,9 @@ async function loadCourses() {
   try {
     const res = await fetch("./courses/courses-gb.json");
     coursesDB = await res.json();
-    console.log("Courses loaded:", coursesDB);
+    console.log("Courses loaded:", Object.keys(coursesDB));
+
+    populateCountryDropdowns();   // NEW: read countries from JSON
     enableCourseSelectors();
     initAdminSelectors();
   } catch (err) {
@@ -20,6 +22,34 @@ async function loadCourses() {
 }
 
 loadCourses();
+
+/* ================= POPULATE COUNTRY DROPDOWNS (4BBB + ADMIN) ================= */
+function populateCountryDropdowns() {
+  const countrySelect = document.getElementById("country");
+  const adminCountry = document.getElementById("adminCountry");
+
+  const countries = Object.keys(coursesDB || {});
+
+  if (countrySelect) {
+    countrySelect.innerHTML = '<option value="">Select</option>';
+    countries.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c;
+      opt.textContent = c;
+      countrySelect.appendChild(opt);
+    });
+  }
+
+  if (adminCountry) {
+    adminCountry.innerHTML = '<option value="">Select</option>';
+    countries.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c;
+      opt.textContent = c;
+      adminCountry.appendChild(opt);
+    });
+  }
+}
 
 /* ================= NAVIGATION ================= */
 function showSection(id, btn) {
@@ -48,7 +78,10 @@ function enableCourseSelectors() {
     if (resultsDiv) resultsDiv.style.display = "none";
     if (teeSelectorDiv) teeSelectorDiv.style.display = "none";
 
-    if (!coursesDB[countryVal]) return;
+    if (!coursesDB[countryVal]) {
+      console.warn("No entry for country in coursesDB:", countryVal);
+      return;
+    }
 
     Object.keys(coursesDB[countryVal]).forEach(county => {
       const opt = document.createElement("option");
@@ -69,6 +102,7 @@ function searchCourses() {
   if (!coursesDB[countryVal] || !coursesDB[countryVal][countyVal]) {
     resultsDiv.style.display = "none";
     list.innerHTML = "";
+    console.warn("No courses for", countryVal, countyVal);
     return;
   }
 
@@ -129,7 +163,7 @@ function applyCourseData() {
   courseRating = data.rating;
   coursePar = data.par;
 
-  // auto-fill hole pars for Stableford & Stroke if we have them
+  // auto-fill hole pars for Stableford & Stroke if defined
   if (Array.isArray(data.holes) && data.holes.length === 18) {
     const stableRows = document.querySelectorAll("#stableTable tbody tr");
     const strokeRows = document.querySelectorAll("#strokeTable tbody tr");
@@ -276,14 +310,6 @@ function initAdminSelectors() {
   const teeEditor = document.getElementById("teeEditor");
 
   if (!adminCountry || !adminCounty) return;
-
-  adminCountry.innerHTML = '<option value="">Select</option>';
-  Object.keys(coursesDB).forEach(country => {
-    const opt = document.createElement("option");
-    opt.value = country;
-    opt.textContent = country;
-    adminCountry.appendChild(opt);
-  });
 
   adminCounty.innerHTML = '<option value="">Select</option>';
   if (courseList) courseList.innerHTML = "";
@@ -463,6 +489,7 @@ function importCourses(event) {
       const data = JSON.parse(e.target.result);
       coursesDB = data;
       alert("Course database imported into memory.");
+      populateCountryDropdowns();  // re-populate from new JSON
       enableCourseSelectors();
       initAdminSelectors();
     } catch (err) {
