@@ -3,10 +3,13 @@
     "Surrey": {
       "Sunningdale Old": {
         "tees": {
-          "White": { "slope": 132, "rating": 73.2, "par": 70 },
-          "Yellow": { "slope": 129, "rating": 71.9, "par": 70 }
-        }
-      },
+  "White": {
+    "slope": 130,
+    "rating": 72.4,
+    "par": 72,
+    "holes": [4,4,3,5,4,4,3,4,5, 4,4,3,5,4,4,3,4,5]
+  }
+}
       "Walton Heath": {
         "tees": {
           "White": { "slope": 130, "rating": 72.4, "par": 72 },
