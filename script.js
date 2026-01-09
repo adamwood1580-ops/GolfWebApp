@@ -9,15 +9,37 @@ let adminSelected = { country: null, county: null, course: null };
 /* ================= LOAD COURSE DATABASE ================= */
 async function loadCourses() {
   try {
-    const res = await fetch("./courses/courses-gb.json");
-    coursesDB = await res.json();
-    console.log("Courses loaded:", Object.keys(coursesDB));
+    console.log("Loading course database…");
 
-    populateCountryDropdowns();   // dynamically load countries
+    // Try ./courses/... first, then courses/... as fallback, with cache-busting
+    let res;
+    try {
+      res = await fetch("./courses/courses-gb.json?v=3");
+      if (!res.ok) throw new Error("Bad path ./courses");
+    } catch (e) {
+      console.warn("Fallback fetch path used:", e.message);
+      res = await fetch("courses/courses-gb.json?v=3");
+    }
+
+    const text = await res.text();
+    console.log("Raw JSON text (first 200 chars):", text.slice(0, 200));
+
+    try {
+      coursesDB = JSON.parse(text);
+    } catch (parseErr) {
+      console.error("JSON parse error:", parseErr);
+      alert("⚠ Error parsing courses-gb.json. Check console and validate JSON.");
+      return;
+    }
+
+    console.log("Parsed coursesDB keys:", Object.keys(coursesDB));
+
+    populateCountryDropdowns();
     enableCourseSelectors();
     initAdminSelectors();
   } catch (err) {
-    console.error("Failed to load course database", err);
+    console.error("JSON failed to load at all:", err);
+    alert("⚠ Could not load course data at all. Check console for details.");
   }
 }
 
@@ -79,9 +101,7 @@ function enableCourseSelectors() {
     if (resultsDiv) resultsDiv.style.display = "none";
     if (teeSelectorDiv) teeSelectorDiv.style.display = "none";
 
-    if (!coursesDB[countryVal]) {
-      return;
-    }
+    if (!coursesDB[countryVal]) return;
 
     Object.keys(coursesDB[countryVal]).forEach(county => {
       const opt = document.createElement("option");
@@ -168,11 +188,11 @@ function applyCourseData() {
     const strokeRows = document.querySelectorAll("#strokeTable tbody tr");
     data.holes.forEach((parVal, i) => {
       if (stableRows[i]) {
-        const p = stableRows[i].cells[2].querySelector("input");
+        const p = stableRows[i].cells[2].querySelector("input"); // Par col in Stableford
         if (p) p.value = parVal;
       }
       if (strokeRows[i]) {
-        const p2 = strokeRows[i].cells[1].querySelector("input");
+        const p2 = strokeRows[i].cells[1].querySelector("input"); // Par col in Stroke
         if (p2) p2.value = parVal;
       }
     });
@@ -183,7 +203,7 @@ function applyCourseData() {
     const stableRows = document.querySelectorAll("#stableTable tbody tr");
     data.si.forEach((siVal, i) => {
       if (stableRows[i]) {
-        const s = stableRows[i].cells[1].querySelector("input");
+        const s = stableRows[i].cells[1].querySelector("input"); // SI col
         if (s) s.value = siVal;
       }
     });
@@ -262,7 +282,7 @@ function calculateStableford() {
   let total = 0;
 
   document.querySelectorAll("#stableTable tbody tr").forEach(row => {
-    const si = parseInt(row.cells[1].querySelector("input").value);   // SI now used soon
+    const si = parseInt(row.cells[1].querySelector("input").value);   // SI (not used yet)
     const par = parseInt(row.cells[2].querySelector("input").value);
     const gross = parseInt(row.cells[3].querySelector("input").value);
 
@@ -271,7 +291,7 @@ function calculateStableford() {
       return;
     }
 
-    // Gross-only Stableford (net coming soon)
+    // Gross-only Stableford (net can be added later using SI + handicap)
     const diff = gross - par;
 
     const points =
