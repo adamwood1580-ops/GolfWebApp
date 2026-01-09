@@ -9,7 +9,7 @@
       },
       "Walton Heath": {
         "tees": {
-          "White": { "slope": 130, "rating": 72.4, "par": 72, "holes": [4,4,3,5,4,4,3,4,5, 4,4,3,5,4,4,3,4,5] }
+          "White": { "slope": 130, "rating": 72.4, "par": 72, "holes": [4,4,3,5,4,4,3,4,5,4,4,3,5,4,4,3,4,5] }
           "Yellow": { "slope": 128, "rating": 71.1, "par": 72 }
         }
       }
