@@ -68,14 +68,17 @@
       font-size: 0.85rem;
     }
 
-    select, input[type="number"], input[type="text"], input[type="file"] {
+    select,
+    input[type="number"],
+    input[type="text"],
+    input[type="file"] {
       width: 100%;
       padding: 6px;
       font-size: 0.9rem;
       box-sizing: border-box;
     }
 
-    /* ====== NEW CLEAN INPUT LOOK ====== */
+    /* Neat aligned inputs inside tables */
     table input[type="number"],
     table input[type="text"] {
       width: 100%;
@@ -89,7 +92,6 @@
     table input[type="number"] {
       text-align: right;
     }
-    /* ================================= */
 
     table {
       width: 100%;
@@ -171,8 +173,133 @@
 <body>
 
 <div class="app">
-  <!-- your UI content remains unchanged -->
-  <!-- ... -->
+  <h1>Golf Web App</h1>
+
+  <div class="nav">
+    <button class="active" onclick="showSection('fourbbb', this)">4BBB</button>
+    <button onclick="showSection('stableford', this)">Stableford</button>
+    <button onclick="showSection('stroke', this)">Stroke Play</button>
+    <button onclick="showSection('admin', this)">Admin</button>
+  </div>
+
+  <!-- ============ 4BBB ============ -->
+  <div id="fourbbb" class="section" style="display:block;">
+    <h2>4BBB Handicap Calculator</h2>
+
+    <div class="controls">
+      <label>Country
+        <select id="country">
+          <option value="">Select</option>
+          <option value="England">England</option>
+          <option value="Scotland">Scotland</option>
+          <option value="Wales">Wales</option>
+        </select>
+      </label>
+
+      <label>County
+        <select id="county">
+          <option value="">Select</option>
+        </select>
+      </label>
+
+      <button type="button" class="action" onclick="searchCourses()">Search</button>
+    </div>
+
+    <div id="courseResults" style="display:none;">
+      <input
+        id="courseSearch"
+        type="text"
+        placeholder="Search courses A–Z"
+        oninput="filterCourses()"
+      >
+      <ul id="courseList"></ul>
+    </div>
+
+    <div id="teeSelector" style="display:none; margin-top:8px;">
+      <label>Tee
+        <select id="tee" onchange="applyCourseData()"></select>
+      </label>
+    </div>
+
+    <table id="players">
+      <thead>
+        <tr>
+          <th>Player</th>
+          <th>Index</th>
+          <th>Course</th>
+          <th>Playing</th>
+          <th>Shots</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><input type="text"></td><td><input type="number" step="0.1"></td><td></td><td></td><td></td></tr>
+        <tr><td><input type="text"></td><td><input type="number" step="0.1"></td><td></td><td></td><td></td></tr>
+        <tr><td><input type="text"></td><td><input type="number" step="0.1"></td><td></td><td></td><td></td></tr>
+        <tr><td><input type="text"></td><td><input type="number" step="0.1"></td><td></td><td></td><td></td></tr>
+      </tbody>
+    </table>
+
+    <button type="button" class="action" onclick="calculate4BBB()">Calculate 4BBB</button>
+  </div>
+
+  <!-- ============ Stableford ============ -->
+  <div id="stableford" class="section">
+    <h2>Stableford</h2>
+    <table id="stableTable">
+      <thead>
+        <tr><th>Hole</th><th>Par</th><th>Gross</th><th>Points</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <button type="button" class="action" onclick="calculateStableford()">Calculate Stableford</button>
+  </div>
+
+  <!-- ============ Stroke Play ============ -->
+  <div id="stroke" class="section">
+    <h2>Stroke Play</h2>
+    <table id="strokeTable">
+      <thead>
+        <tr><th>Hole</th><th>Par</th><th>Gross</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <button type="button" class="action" onclick="calculateStrokePlay()">Total Score</button>
+    <p id="strokeTotal"></p>
+  </div>
+
+  <!-- ============ Admin ============ -->
+  <div id="admin" class="section">
+    <h2>Course Admin</h2>
+    <p style="font-size:0.8rem;">
+      Changes are stored in memory only. Use <strong>Download JSON</strong> to save and then update
+      <code>courses-gb.json</code> in your GitHub repo.
+    </p>
+
+    <div class="controls">
+      <button type="button" class="action" onclick="exportCourses()">Download JSON</button>
+      <label>Import JSON
+        <input type="file" id="importFile" accept="application/json" onchange="importCourses(event)">
+      </label>
+    </div>
+
+    <div class="controls">
+      <label>Country
+        <select id="adminCountry" onchange="adminCountryChanged()">
+          <option value="">Select</option>
+        </select>
+      </label>
+      <label>County
+        <select id="adminCounty" onchange="adminCountyChanged()">
+          <option value="">Select</option>
+        </select>
+      </label>
+    </div>
+
+    <div id="adminCourseList"></div>
+    <div id="teeEditor"></div>
+  </div>
+
+  <footer>Offline-capable • JSON-based database • Admin editing</footer>
 </div>
 
 <script src="./script.js"></script>
