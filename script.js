@@ -13,7 +13,7 @@ async function loadCourses() {
     coursesDB = await res.json();
     console.log("Courses loaded:", Object.keys(coursesDB));
 
-    populateCountryDropdowns();   // NEW: read countries from JSON
+    populateCountryDropdowns();   // dynamically load countries
     enableCourseSelectors();
     initAdminSelectors();
   } catch (err) {
@@ -23,7 +23,7 @@ async function loadCourses() {
 
 loadCourses();
 
-/* ================= POPULATE COUNTRY DROPDOWNS (4BBB + ADMIN) ================= */
+/* ================= POPULATE COUNTRY DROPDOWNS ================= */
 function populateCountryDropdowns() {
   const countrySelect = document.getElementById("country");
   const adminCountry = document.getElementById("adminCountry");
@@ -67,6 +67,7 @@ function showSection(id, btn) {
 function enableCourseSelectors() {
   const countrySelect = document.getElementById("country");
   const countySelect = document.getElementById("county");
+
   if (!countrySelect || !countySelect) return;
 
   countrySelect.onchange = function () {
@@ -79,7 +80,6 @@ function enableCourseSelectors() {
     if (teeSelectorDiv) teeSelectorDiv.style.display = "none";
 
     if (!coursesDB[countryVal]) {
-      console.warn("No entry for country in coursesDB:", countryVal);
       return;
     }
 
@@ -102,7 +102,6 @@ function searchCourses() {
   if (!coursesDB[countryVal] || !coursesDB[countryVal][countyVal]) {
     resultsDiv.style.display = "none";
     list.innerHTML = "";
-    console.warn("No courses for", countryVal, countyVal);
     return;
   }
 
@@ -163,18 +162,29 @@ function applyCourseData() {
   courseRating = data.rating;
   coursePar = data.par;
 
-  // auto-fill hole pars for Stableford & Stroke if defined
+  // auto-fill hole pars if defined
   if (Array.isArray(data.holes) && data.holes.length === 18) {
     const stableRows = document.querySelectorAll("#stableTable tbody tr");
     const strokeRows = document.querySelectorAll("#strokeTable tbody tr");
     data.holes.forEach((parVal, i) => {
       if (stableRows[i]) {
-        const inp = stableRows[i].cells[1].querySelector("input");
-        if (inp) inp.value = parVal;
+        const p = stableRows[i].cells[2].querySelector("input");
+        if (p) p.value = parVal;
       }
       if (strokeRows[i]) {
-        const inp2 = strokeRows[i].cells[1].querySelector("input");
-        if (inp2) inp2.value = parVal;
+        const p2 = strokeRows[i].cells[1].querySelector("input");
+        if (p2) p2.value = parVal;
+      }
+    });
+  }
+
+  // auto-fill stroke index if defined
+  if (Array.isArray(data.si) && data.si.length === 18) {
+    const stableRows = document.querySelectorAll("#stableTable tbody tr");
+    data.si.forEach((siVal, i) => {
+      if (stableRows[i]) {
+        const s = stableRows[i].cells[1].querySelector("input");
+        if (s) s.value = siVal;
       }
     });
   }
@@ -239,8 +249,9 @@ function calculate4BBB() {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${i}</td>
-      <td><input type="number"></td>
-      <td><input type="number"></td>
+      <td><input type="number"></td>   <!-- SI -->
+      <td><input type="number"></td>   <!-- Par -->
+      <td><input type="number"></td>   <!-- Gross -->
       <td></td>
     `;
     tbody.appendChild(tr);
@@ -251,15 +262,18 @@ function calculateStableford() {
   let total = 0;
 
   document.querySelectorAll("#stableTable tbody tr").forEach(row => {
-    const par = parseInt(row.cells[1].querySelector("input").value);
-    const gross = parseInt(row.cells[2].querySelector("input").value);
+    const si = parseInt(row.cells[1].querySelector("input").value);   // SI now used soon
+    const par = parseInt(row.cells[2].querySelector("input").value);
+    const gross = parseInt(row.cells[3].querySelector("input").value);
 
     if (isNaN(par) || isNaN(gross)) {
-      row.cells[3].textContent = "";
+      row.cells[4].textContent = "";
       return;
     }
 
+    // Gross-only Stableford (net coming soon)
     const diff = gross - par;
+
     const points =
       diff <= -3 ? 5 :
       diff === -2 ? 4 :
@@ -267,7 +281,7 @@ function calculateStableford() {
       diff === 0 ? 2 :
       diff === 1 ? 1 : 0;
 
-    row.cells[3].textContent = points;
+    row.cells[4].textContent = points;
     total += points;
   });
 
@@ -283,8 +297,8 @@ function calculateStableford() {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${i}</td>
-      <td><input type="number"></td>
-      <td><input type="number"></td>
+      <td><input type="number"></td>   <!-- Par -->
+      <td><input type="number"></td>   <!-- Gross -->
     `;
     tbody.appendChild(tr);
   }
@@ -489,7 +503,7 @@ function importCourses(event) {
       const data = JSON.parse(e.target.result);
       coursesDB = data;
       alert("Course database imported into memory.");
-      populateCountryDropdowns();  // re-populate from new JSON
+      populateCountryDropdowns();
       enableCourseSelectors();
       initAdminSelectors();
     } catch (err) {
